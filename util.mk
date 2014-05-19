@@ -1,4 +1,14 @@
+######################################
+# 
+# date              author             what 
+# 2014.5.18       96juelian    add better resign method.
+# 
+###################################
+
+FILE = ${PORT_DEVICE}/custom_resign_app.mk
+
 include ${PORT_BUILD}/apps.conf
+-include ${FILE}
 
 ${shell mkdir -p ${PORT_DEVICE}/apps}
 ${shell mkdir -p ${PORT_DEVICE}/update/system}
@@ -9,22 +19,32 @@ $(1):
 	@cp ${PORT_BUILD}/ColorSystem/app/$1 ${PORT_DEVICE}/apps
 endef
 
-define APK_ORIGIN_template
-APKS_ORIGIN += $(1)
+ifeq ($(FILE), $(wildcard $(FILE)))
+define APK_CUSTOMAPP_template
+APKS_CUSTOM += $(1)
 $(1):
-	@echo "resign origin apk: $1"
-	@cp ${PORT_DEVICE}/update/system/app/$1 ${PORT_DEVICE}/apps
+	@echo "resign custom origin apk: $1"
+	@cp ${PORT_DEVICE}/custom-update/system/app/$1 ${PORT_DEVICE}/apps
 endef
+endif
 
 $(foreach apk, $(APPS_NEED_RESIGN) $(APPS_EXTRA) ${APPS_MTK_ONLY}, \
 	$(eval $(call APK_template,$(apk))))
 
-$(foreach apk, $(APPS_KEEP_ORIGIN), \
-	$(eval $(call APK_ORIGIN_template,$(apk))))	
+ifeq ($(FILE), $(wildcard $(FILE)))
+$(foreach apk, $(APPS_CUSTOM_ORIGIN), \
+	$(eval $(call APK_CUSTOMAPP_template,$(apk))))
+endif
 
-sign : ${SIGNAPKS} ${APKS_ORIGIN}
+ifeq ($(FILE), $(wildcard $(FILE)))
+sign : ${SIGNAPKS} ${APKS_CUSTOM}
+	@echo "Sign all needed apks!, had custom sign apps!"
+	${PORT_TOOLS}/resign.sh dir ${PORT_DEVICE}/apps
+else
+sign : ${SIGNAPKS}
 	@echo "Sign all needed apks!"
 	${PORT_TOOLS}/resign.sh dir ${PORT_DEVICE}/apps
+endif
 
 .PHONY: update
 update:
